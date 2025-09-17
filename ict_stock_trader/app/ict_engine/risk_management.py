@@ -421,6 +421,7 @@ class StockRiskManagementEngine:
                 'max_risk_per_trade_dollar': account_balance * (self.max_position_risk_percentage / 100),
                 'total_setups': len(trade_setups),
                 'sized_positions': sized_positions,
+                'position_sizes': sized_positions,  # Test expects this field name
                 'portfolio_risk_analysis': self._analyze_portfolio_risk(sized_positions, account_balance),
                 'sizing_guidelines': self._get_position_sizing_guidelines()
             }
@@ -638,6 +639,7 @@ class StockRiskManagementEngine:
             
             return {
                 'setup_classification': classified_setups,
+                'classified_setups': classified_setups,  # Test expects this field name
                 'classification_summary': {
                     'A_plus_setups': len(classified_setups['A+']),
                     'B_setups': len(classified_setups['B']),

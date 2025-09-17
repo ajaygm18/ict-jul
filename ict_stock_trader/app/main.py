@@ -169,7 +169,7 @@ async def get_stock_data(
         if 'error' in data:
             raise HTTPException(status_code=404, detail=data['error'])
         
-        return {
+        response_data = {
             "symbol": symbol,
             "timeframe": timeframe,
             "data": data['data'].to_dict('records') if not data['data'].empty else [],
@@ -178,6 +178,9 @@ async def get_stock_data(
             "last_update": data['last_update'],
             "data_points": data['data_points']
         }
+        
+        # Apply proper JSON serialization
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error fetching stock data for {symbol}: {e}")

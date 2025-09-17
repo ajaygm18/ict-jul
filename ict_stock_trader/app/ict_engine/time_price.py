@@ -127,6 +127,7 @@ class StockTimeAndPriceAnalyzer:
             summary = self._generate_killzone_summary(killzone_analysis)
             
             return {
+                'killzones': killzone_analysis,  # Test expects 'killzones' key
                 'killzone_analysis': killzone_analysis,
                 'summary': summary,
                 'current_session': self._get_current_session(),
@@ -196,11 +197,21 @@ class StockTimeAndPriceAnalyzer:
                     if overnight_gap:
                         session_opens['overnight_gaps'].append(overnight_gap)
             
-            return {
+            result = {
                 'session_opens': session_opens,
                 'statistics': self._calculate_session_statistics(session_opens),
                 'patterns': self._identify_session_patterns(session_opens)
             }
+            
+            # Add direct access for test compatibility
+            if 'premarket_opens' in session_opens:
+                result['premarket_opens'] = session_opens['premarket_opens']
+            if 'market_opens' in session_opens:
+                result['market_opens'] = session_opens['market_opens']
+            if 'afterhours_opens' in session_opens:
+                result['afterhours_opens'] = session_opens['afterhours_opens']
+                
+            return result
             
         except Exception as e:
             logger.error(f"Error in session opens analysis: {e}")
