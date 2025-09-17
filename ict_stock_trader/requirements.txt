@@ -20,6 +20,7 @@ pandas-ta
 scikit-learn
 torch
 transformers
+xgboost
 
 # Async and task scheduling
 asyncio
