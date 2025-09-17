@@ -7,6 +7,7 @@ from ict_stock_trader.app.models.placeholder_types import (
     MitigationBlock, SupplyDemandZone, DealingRange, SwingPoint,
     JudasSwing, TurtleSoup, OTE, SMTDivergence, LiquidityVoid
 )
+from ict_stock_trader.app.data.yfinance_client import StockDataManager
 
 class StockSwingAnalyzer:
     def find_swing_points(self, stock_data: pd.DataFrame, order: int = 1) -> pd.DataFrame:
@@ -14,12 +15,9 @@ class StockSwingAnalyzer:
         df['swing_high'] = np.nan
         df['swing_low'] = np.nan
         for i in range(order, len(df) - order):
-            # Strict definition: peak is higher than neighbors on both sides
             is_swing_high = all(df['High'].iloc[i] > df['High'].iloc[i-j] for j in range(1, order + 1)) and \
                             all(df['High'].iloc[i] > df['High'].iloc[i+j] for j in range(1, order + 1))
             if is_swing_high: df.loc[df.index[i], 'swing_high'] = df['High'].iloc[i]
-
-            # Strict definition: trough is lower than neighbors on both sides
             is_swing_low = all(df['Low'].iloc[i] < df['Low'].iloc[i-j] for j in range(1, order + 1)) and \
                            all(df['Low'].iloc[i] < df['Low'].iloc[i+j] for j in range(1, order + 1))
             if is_swing_low: df.loc[df.index[i], 'swing_low'] = df['Low'].iloc[i]
@@ -101,10 +99,8 @@ class StockMarketStructureAnalyzer:
         fvgs, df = [], stock_data.copy()
         for i in range(len(df) - 2):
             c1, c2, c3 = df.iloc[i], df.iloc[i+1], df.iloc[i+2]
-            if c3['Low'] > c1['High']:
-                fvgs.append({"type": "Bullish", "timestamp": c2.name, "top": c3['Low'], "bottom": c1['High']})
-            if c3['High'] < c1['Low']:
-                fvgs.append({"type": "Bearish", "timestamp": c2.name, "top": c1['Low'], "bottom": c3['High']})
+            if c3['Low'] > c1['High']: fvgs.append({"type": "Bullish", "timestamp": c2.name, "top": c3['Low'], "bottom": c1['High']})
+            if c3['High'] < c1['Low']: fvgs.append({"type": "Bearish", "timestamp": c2.name, "top": c1['Low'], "bottom": c3['High']})
         return fvgs
 
     def concept_7_rejection_blocks(self, stock_data: pd.DataFrame, body_wick_ratio: float = 2.0) -> List[Dict[str, Any]]:
@@ -113,21 +109,16 @@ class StockMarketStructureAnalyzer:
             candle = df.iloc[i]
             body_size = abs(candle['Open'] - candle['Close'])
             if body_size == 0: continue
-            upper_wick = candle['High'] - max(candle['Open'], candle['Close'])
-            lower_wick = min(candle['Open'], candle['Close']) - candle['Low']
-            if upper_wick > body_size * body_wick_ratio:
-                rejection_blocks.append({"type": "Bearish", "timestamp": candle.name, "price": candle['High']})
-            if lower_wick > body_size * body_wick_ratio:
-                rejection_blocks.append({"type": "Bullish", "timestamp": candle.name, "price": candle['Low']})
+            upper_wick, lower_wick = candle['High'] - max(candle['Open'], candle['Close']), min(candle['Open'], candle['Close']) - candle['Low']
+            if upper_wick > body_size * body_wick_ratio: rejection_blocks.append({"type": "Bearish", "timestamp": candle.name, "price": candle['High']})
+            if lower_wick > body_size * body_wick_ratio: rejection_blocks.append({"type": "Bullish", "timestamp": candle.name, "price": candle['Low']})
         return rejection_blocks
 
-    def concept_8_mitigation_blocks(self, stock_data: pd.DataFrame) -> List[MitigationBlock]:
-        return []
+    def concept_8_mitigation_blocks(self, stock_data: pd.DataFrame) -> List[MitigationBlock]: return []
 
     def concept_9_supply_demand_zones(self, stock_data: pd.DataFrame, lookback: int = 5) -> List[Dict[str, Any]]:
         zones = []
-        order_blocks = self.concept_4_order_blocks_bullish_bearish(stock_data, lookback=lookback)
-        for ob in order_blocks:
+        for ob in self.concept_4_order_blocks_bullish_bearish(stock_data, lookback=lookback):
             zones.append({"type": "Demand" if ob['type'] == 'Bullish' else 'Supply', "timestamp": ob['timestamp'], "top": ob['High'], "bottom": ob['Low']})
         return zones
 
@@ -136,44 +127,67 @@ class StockMarketStructureAnalyzer:
         if range_low is None: range_low = stock_data['Low'].min()
         price_range = range_high - range_low
         equilibrium = range_low + (price_range / 2)
-        sell_ote_62 = range_high - (price_range * 0.62)
-        sell_ote_79 = range_high - (price_range * 0.79)
-        buy_ote_62 = range_low + (price_range * 0.62)
-        buy_ote_79 = range_low + (price_range * 0.79)
-        return {
-            "range_high": range_high, "range_low": range_low, "equilibrium": equilibrium,
-            "premium_zone_top": range_high, "premium_zone_bottom": equilibrium,
-            "discount_zone_top": equilibrium, "discount_zone_bottom": range_low,
-            "sell_ote": {"62%": sell_ote_62, "79%": sell_ote_79},
-            "buy_ote": {"62%": buy_ote_62, "79%": buy_ote_79}
-        }
+        return {"range_high": range_high, "range_low": range_low, "equilibrium": equilibrium, "sell_ote": {"62%": range_high - (price_range * 0.62), "79%": range_high - (price_range * 0.79)}, "buy_ote": {"62%": range_low + (price_range * 0.62), "79%": range_low + (price_range * 0.79)}}
 
-    def concept_11_dealing_ranges(self, stock_data: pd.DataFrame) -> List[DealingRange]:
-        pass
+    def concept_11_dealing_ranges(self, stock_data: pd.DataFrame, lookback: int = 20) -> List[Dict[str, Any]]:
+        high, low = stock_data['High'].rolling(window=lookback).max(), stock_data['Low'].rolling(window=lookback).min()
+        return [{"timestamp": stock_data.index[i], "high": high.iloc[i], "low": low.iloc[i]} for i in range(len(stock_data)) if pd.notna(high.iloc[i])]
 
-    def concept_12_swing_highs_swing_lows(self, stock_data: pd.DataFrame) -> List[SwingPoint]:
-        pass
+    def concept_12_swing_highs_swing_lows(self, stock_data: pd.DataFrame, order: int = 1) -> List[Dict[str, Any]]:
+        swing_data = self.swing_analyzer.find_swing_points(stock_data.copy(), order=order)
+        highs = swing_data[swing_data['swing_high'].notna()]
+        lows = swing_data[swing_data['swing_low'].notna()]
+        return [{"type": "high", "timestamp": r.Index, "price": r.swing_high} for r in highs.itertuples()] + [{"type": "low", "timestamp": r.Index, "price": r.swing_low} for r in lows.itertuples()]
 
-    def concept_13_market_maker_buy_sell_models(self, stock_data: pd.DataFrame) -> Dict:
-        pass
+    def concept_13_market_maker_buy_sell_models(self, stock_data: pd.DataFrame) -> Dict: return {}
 
-    def concept_14_market_maker_programs(self, stock_data: pd.DataFrame) -> Dict:
-        pass
+    def concept_14_market_maker_programs(self, stock_data: pd.DataFrame) -> Dict: return {}
 
-    def concept_15_judas_swing(self, stock_data: pd.DataFrame) -> List[JudasSwing]:
-        pass
+    def concept_15_judas_swing(self, stock_data: pd.DataFrame) -> List[JudasSwing]: return []
 
-    def concept_16_turtle_soup(self, stock_data: pd.DataFrame) -> List[TurtleSoup]:
-        pass
+    def concept_16_turtle_soup(self, stock_data: pd.DataFrame, period: int = 20) -> List[Dict[str, Any]]:
+        df = stock_data.copy()
+        df['20d_high'] = df['High'].rolling(window=period).max().shift(1)
+        df['20d_low'] = df['Low'].rolling(window=period).min().shift(1)
+        buy_soup = df[(df['Low'] < df['20d_low']) & (df['Close'] > df['20d_low'])]
+        sell_soup = df[(df['High'] > df['20d_high']) & (df['Close'] < df['20d_high'])]
+        return [{"type": "buy", "timestamp": r.Index} for r in buy_soup.itertuples()] + [{"type": "sell", "timestamp": r.Index} for r in sell_soup.itertuples()]
 
-    def concept_17_power_of_3(self, stock_data: pd.DataFrame) -> Dict:
-        pass
+    def concept_17_power_of_3(self, stock_data: pd.DataFrame) -> List[Dict[str, Any]]:
+        results = []
+        for i in range(len(stock_data)):
+            candle = stock_data.iloc[i]
+            is_amd = candle['Close'] > candle['Open'] and candle['Low'] < candle['Open'] and candle['High'] > candle['Close']
+            if is_amd: results.append({"type": "Bullish AMD", "timestamp": candle.name})
+            is_dma = candle['Close'] < candle['Open'] and candle['High'] > candle['Open'] and candle['Low'] < candle['Close']
+            if is_dma: results.append({"type": "Bearish DMA", "timestamp": candle.name})
+        return results
 
-    def concept_18_optimal_trade_entry(self, stock_data: pd.DataFrame) -> List[OTE]:
-        pass
+    def concept_18_optimal_trade_entry(self, stock_data: pd.DataFrame, order: int = 5) -> List[Dict[str, Any]]:
+        swing_data = self.swing_analyzer.find_swing_points(stock_data.copy(), order=order)
+        swing_highs, swing_lows = swing_data['swing_high'].dropna(), swing_data['swing_low'].dropna()
+        if len(swing_highs) < 1 or len(swing_lows) < 1: return []
+        recent_high, recent_low = swing_highs.iloc[-1], swing_lows.iloc[-1]
+        ote_info = self.concept_10_premium_discount_ote(stock_data, range_high=recent_high, range_low=recent_low)
+        return [ote_info]
 
-    def concept_19_smt_divergence(self, stock_data: pd.DataFrame, correlated_stocks: List[str]) -> List[SMTDivergence]:
-        pass
+    def concept_19_smt_divergence(self, stock_data: pd.DataFrame, correlated_symbol: str, order: int = 5) -> List[Dict[str, Any]]:
+        data_manager = StockDataManager()
+        other_data = data_manager.get_real_time_stock_data(correlated_symbol, period=f"{len(stock_data)}d", interval="1d")
+        if len(other_data) != len(stock_data): return []
+        swing_data1 = self.swing_analyzer.find_swing_points(stock_data.copy(), order=order)
+        swing_data2 = self.swing_analyzer.find_swing_points(other_data.copy(), order=order)
+        lows1, lows2 = swing_data1['swing_low'].dropna(), swing_data2['swing_low'].dropna()
+        if len(lows1) < 2 or len(lows2) < 2: return []
+        if (lows1.iloc[-1] < lows1.iloc[-2]) and (lows2.iloc[-1] > lows2.iloc[-2]):
+            return [{"type": "Bullish SMT", "timestamp": lows1.index[-1]}]
+        return []
 
-    def concept_20_liquidity_voids_inefficiencies(self, stock_data: pd.DataFrame) -> List[LiquidityVoid]:
-        pass
+    def concept_20_liquidity_voids_inefficiencies(self, stock_data: pd.DataFrame, min_gap_size: float = 0.01) -> List[Dict[str, Any]]:
+        voids, df = [], stock_data.copy()
+        for i in range(len(df) - 1):
+            c1, c2 = df.iloc[i], df.iloc[i+1]
+            gap_size = c2['Low'] - c1['High']
+            if gap_size > (c1['High'] * min_gap_size):
+                voids.append({"type": "Bullish", "timestamp": c1.name, "top": c2['Low'], "bottom": c1['High']})
+        return voids
