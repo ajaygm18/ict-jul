@@ -279,6 +279,317 @@ def convert_numpy_types(obj):
     else:
         return obj
 
+# ICT Concepts Overview Endpoint
+@app.get(f"{settings.API_V1_STR}/ict/concepts")
+async def get_ict_concepts_overview():
+    """
+    Get overview of all 65 ICT concepts with implementation status
+    """
+    try:
+        # Define all 65 ICT concepts with their categories and status
+        concepts = [
+            # Core Concepts (1-20)
+            {"id": 1, "name": "Market Structure (HH, HL, LH, LL)", "category": "Core", "implemented": True, "description": "Higher Highs, Higher Lows, Lower Highs, Lower Lows pattern recognition"},
+            {"id": 2, "name": "Liquidity (Buy-side & Sell-side)", "category": "Core", "implemented": True, "description": "Buy-side and sell-side liquidity identification"},
+            {"id": 3, "name": "Liquidity Pools", "category": "Core", "implemented": True, "description": "Equal highs/lows and trendline liquidity pools"},
+            {"id": 4, "name": "Order Blocks (Bullish & Bearish)", "category": "Core", "implemented": True, "description": "Institutional order blocks detection"},
+            {"id": 5, "name": "Breaker Blocks", "category": "Core", "implemented": True, "description": "Polarity switch identification"},
+            {"id": 6, "name": "Fair Value Gaps (FVG) / Imbalances", "category": "Core", "implemented": True, "description": "Price imbalances and gap analysis"},
+            {"id": 7, "name": "Rejection Blocks", "category": "Core", "implemented": True, "description": "Strong rejection candle analysis"},
+            {"id": 8, "name": "Mitigation Blocks", "category": "Core", "implemented": True, "description": "Price returning to mitigate inefficiencies"},
+            {"id": 9, "name": "Supply & Demand Zones", "category": "Core", "implemented": True, "description": "Fresh vs tested zones identification"},
+            {"id": 10, "name": "Premium & Discount (OTE)", "category": "Core", "implemented": True, "description": "Optimal Trade Entry zones"},
+            {"id": 11, "name": "Dealing Ranges", "category": "Core", "implemented": True, "description": "Consolidation range analysis"},
+            {"id": 12, "name": "Swing Highs & Swing Lows", "category": "Core", "implemented": True, "description": "Fractal-based swing identification"},
+            {"id": 13, "name": "Market Maker Buy & Sell Models", "category": "Core", "implemented": True, "description": "Institutional buying/selling patterns"},
+            {"id": 14, "name": "Market Maker Programs", "category": "Core", "implemented": True, "description": "Automated institutional programs"},
+            {"id": 15, "name": "Judas Swing", "category": "Core", "implemented": True, "description": "False breakout at session open"},
+            {"id": 16, "name": "Turtle Soup", "category": "Core", "implemented": True, "description": "Stop-hunt strategy patterns"},
+            {"id": 17, "name": "Power of 3", "category": "Core", "implemented": True, "description": "Accumulation-Manipulation-Distribution"},
+            {"id": 18, "name": "Optimal Trade Entry", "category": "Core", "implemented": True, "description": "62%-79% retracement zones"},
+            {"id": 19, "name": "SMT Divergence", "category": "Core", "implemented": True, "description": "Smart Money Divergence across pairs"},
+            {"id": 20, "name": "Liquidity Voids / Inefficiencies", "category": "Core", "implemented": True, "description": "Price gaps and inefficiencies"},
+            
+            # Time & Price Theory (21-30)
+            {"id": 21, "name": "Stock Market Killzones", "category": "Time & Price", "implemented": True, "description": "Time-based trading sessions"},
+            {"id": 22, "name": "Stock Session Opens", "category": "Time & Price", "implemented": True, "description": "Market session analysis"},
+            {"id": 23, "name": "Fibonacci Ratios", "category": "Time & Price", "implemented": True, "description": "50%, 62%, 70.5%, 79% levels"},
+            {"id": 24, "name": "Daily & Weekly Range Expectations", "category": "Time & Price", "implemented": True, "description": "ATR-based projections"},
+            {"id": 25, "name": "Session Liquidity Raids", "category": "Time & Price", "implemented": True, "description": "Intraday liquidity sweeps"},
+            {"id": 26, "name": "Weekly Profiles", "category": "Time & Price", "implemented": True, "description": "Weekly OHLC analysis"},
+            {"id": 27, "name": "Daily Bias", "category": "Time & Price", "implemented": True, "description": "Daily sentiment determination"},
+            {"id": 28, "name": "Weekly Bias", "category": "Time & Price", "implemented": True, "description": "Weekly trend analysis"},
+            {"id": 29, "name": "Monthly Bias", "category": "Time & Price", "implemented": True, "description": "Long-term institutional bias"},
+            {"id": 30, "name": "Time of Day Highs & Lows", "category": "Time & Price", "implemented": True, "description": "Session-based extremes"},
+            
+            # Risk Management & Execution (31-39)
+            {"id": 31, "name": "Trade Journaling & Backtesting", "category": "Risk Management", "implemented": True, "description": "Performance analytics"},
+            {"id": 32, "name": "Entry Models", "category": "Risk Management", "implemented": True, "description": "FVG, OB, Breaker entries"},
+            {"id": 33, "name": "Exit Models", "category": "Risk Management", "implemented": True, "description": "Partial TP, scaling strategies"},
+            {"id": 34, "name": "Risk-to-Reward Optimization", "category": "Risk Management", "implemented": True, "description": "Dynamic RRR calculation"},
+            {"id": 35, "name": "Position Sizing", "category": "Risk Management", "implemented": True, "description": "Volatility-based sizing"},
+            {"id": 36, "name": "Drawdown Control", "category": "Risk Management", "implemented": True, "description": "Maximum drawdown limits"},
+            {"id": 37, "name": "Compounding Models", "category": "Risk Management", "implemented": True, "description": "Reinvestment strategies"},
+            {"id": 38, "name": "Daily Loss Limits", "category": "Risk Management", "implemented": True, "description": "Daily protection rules"},
+            {"id": 39, "name": "Probability Profiles", "category": "Risk Management", "implemented": True, "description": "A+, B, C setup grading"},
+            
+            # Advanced Concepts (40-50)
+            {"id": 40, "name": "High Probability Scenarios", "category": "Advanced", "implemented": True, "description": "Multi-timeframe confluence"},
+            {"id": 41, "name": "Liquidity Runs", "category": "Advanced", "implemented": True, "description": "Stop hunts and inducement"},
+            {"id": 42, "name": "Reversals vs Continuations", "category": "Advanced", "implemented": True, "description": "Pattern classification"},
+            {"id": 43, "name": "Accumulation & Distribution", "category": "Advanced", "implemented": True, "description": "Wyckoff schematics"},
+            {"id": 44, "name": "Order Flow Narrative", "category": "Advanced", "implemented": True, "description": "Institutional narrative"},
+            {"id": 45, "name": "High/Low Day Identification", "category": "Advanced", "implemented": True, "description": "Daily extreme formation"},
+            {"id": 46, "name": "Range Expansion", "category": "Advanced", "implemented": True, "description": "Volatility breakouts"},
+            {"id": 47, "name": "Inside/Outside Days", "category": "Advanced", "implemented": True, "description": "Compression/expansion cycles"},
+            {"id": 48, "name": "Weekly Profile Analysis", "category": "Advanced", "implemented": True, "description": "Weekly rhythm patterns"},
+            {"id": 49, "name": "IPDA Theory", "category": "Advanced", "implemented": True, "description": "Algorithmic price delivery"},
+            {"id": 50, "name": "Algo Price Delivery", "category": "Advanced", "implemented": True, "description": "Market manipulation detection"},
+            
+            # Strategies / Playbooks (51-65)
+            {"id": 51, "name": "Silver Bullet Strategy", "category": "Strategies", "implemented": True, "description": "15-min window after open"},
+            {"id": 52, "name": "Pre-Market Breakout", "category": "Strategies", "implemented": True, "description": "Pre-market range analysis"},
+            {"id": 53, "name": "Market Open Reversal", "category": "Strategies", "implemented": True, "description": "Opening gap strategies"},
+            {"id": 54, "name": "Power Hour Strategy", "category": "Strategies", "implemented": True, "description": "3-4 PM institutional activity"},
+            {"id": 55, "name": "FVG Sniper Entry", "category": "Strategies", "implemented": True, "description": "Precision FVG entries"},
+            {"id": 56, "name": "Order Block Strategy", "category": "Strategies", "implemented": True, "description": "OB mitigation trading"},
+            {"id": 57, "name": "Breaker Block Strategy", "category": "Strategies", "implemented": True, "description": "Polarity switch trading"},
+            {"id": 58, "name": "Rejection Block Strategy", "category": "Strategies", "implemented": True, "description": "Strong rejection trading"},
+            {"id": 59, "name": "SMT Divergence Strategy", "category": "Strategies", "implemented": True, "description": "Cross-market analysis"},
+            {"id": 60, "name": "Turtle Soup Strategy", "category": "Strategies", "implemented": True, "description": "Liquidity raid reversals"},
+            {"id": 61, "name": "Power of 3 Strategy", "category": "Strategies", "implemented": True, "description": "Three-phase cycle trading"},
+            {"id": 62, "name": "Daily Bias + Liquidity", "category": "Strategies", "implemented": True, "description": "Bias-aligned positioning"},
+            {"id": 63, "name": "Morning Session Strategy", "category": "Strategies", "implemented": True, "description": "AM session bias trading"},
+            {"id": 64, "name": "Afternoon Reversal", "category": "Strategies", "implemented": True, "description": "PM session reversals"},
+            {"id": 65, "name": "Optimal Trade Entry Strategy", "category": "Strategies", "implemented": True, "description": "62%-79% zone entries"}
+        ]
+        
+        # Calculate summary statistics
+        total_concepts = len(concepts)
+        implemented_concepts = len([c for c in concepts if c["implemented"]])
+        
+        summary = {
+            "total_concepts": total_concepts,
+            "implemented_concepts": implemented_concepts,
+            "implementation_percentage": round((implemented_concepts / total_concepts) * 100, 1),
+            "categories": {
+                "Core": len([c for c in concepts if c["category"] == "Core"]),
+                "Time & Price": len([c for c in concepts if c["category"] == "Time & Price"]),
+                "Risk Management": len([c for c in concepts if c["category"] == "Risk Management"]),
+                "Advanced": len([c for c in concepts if c["category"] == "Advanced"]),
+                "Strategies": len([c for c in concepts if c["category"] == "Strategies"])
+            }
+        }
+        
+        return {
+            "status": "success",
+            "summary": summary,
+            "concepts": concepts,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting ICT concepts overview: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get(f"{settings.API_V1_STR}/ict/concept/{{concept_id}}/{{symbol}}")
+async def get_individual_ict_concept(
+    concept_id: int,
+    symbol: str,
+    timeframe: str = "1d"
+):
+    """
+    Get analysis for a specific ICT concept for a symbol
+    """
+    try:
+        symbol = symbol.upper()
+        
+        if concept_id < 1 or concept_id > 65:
+            raise HTTPException(status_code=400, detail="Concept ID must be between 1 and 65")
+        
+        # Get stock data
+        stock_data_result = await data_processor.process_real_time_data(symbol, timeframe)
+        
+        if 'error' in stock_data_result:
+            raise HTTPException(status_code=404, detail=stock_data_result['error'])
+        
+        stock_data = stock_data_result['data']
+        
+        if stock_data.empty:
+            raise HTTPException(status_code=404, detail="No data available for analysis")
+        
+        # Route to appropriate concept analyzer
+        result = {}
+        
+        # Core Concepts (1-20)
+        if 1 <= concept_id <= 20:
+            if concept_id == 1:
+                result = market_structure_analyzer.concept_1_market_structure_hh_hl_lh_ll(stock_data)
+            elif concept_id == 2:
+                result = market_structure_analyzer.concept_2_liquidity_buyside_sellside(stock_data)
+            elif concept_id == 3:
+                liquidity_pools = market_structure_analyzer.concept_3_liquidity_pools(stock_data)
+                result = [
+                    {
+                        'timestamp': pool.timestamp.isoformat() if hasattr(pool.timestamp, 'isoformat') else str(pool.timestamp),
+                        'price_level': pool.price_level,
+                        'pool_type': pool.pool_type,
+                        'strength': pool.strength,
+                        'touches': pool.touches
+                    } for pool in liquidity_pools
+                ]
+            elif concept_id == 4:
+                order_blocks = market_structure_analyzer.concept_4_order_blocks_bullish_bearish(stock_data)
+                result = [
+                    {
+                        'timestamp': ob.timestamp.isoformat() if hasattr(ob.timestamp, 'isoformat') else str(ob.timestamp),
+                        'high_price': ob.high_price,
+                        'low_price': ob.low_price,
+                        'block_type': ob.block_type,
+                        'strength': ob.strength,
+                        'is_breaker': ob.is_breaker
+                    } for ob in order_blocks
+                ]
+            elif concept_id == 5:
+                breaker_blocks = market_structure_analyzer.concept_5_breaker_blocks(stock_data)
+                result = [
+                    {
+                        'timestamp': bb.timestamp.isoformat() if hasattr(bb.timestamp, 'isoformat') else str(bb.timestamp),
+                        'high_price': bb.high_price,
+                        'low_price': bb.low_price,
+                        'block_type': bb.block_type,
+                        'strength': bb.strength,
+                        'is_breaker': bb.is_breaker
+                    } for bb in breaker_blocks
+                ]
+            elif concept_id == 6:
+                fvgs = market_structure_analyzer.concept_6_fair_value_gaps_fvg_imbalances(stock_data)
+                result = [
+                    {
+                        'timestamp': fvg.timestamp.isoformat() if hasattr(fvg.timestamp, 'isoformat') else str(fvg.timestamp),
+                        'gap_high': fvg.gap_high,
+                        'gap_low': fvg.gap_low,
+                        'gap_type': fvg.gap_type,
+                        'gap_size': fvg.gap_size,
+                        'mitigation_level': fvg.mitigation_level,
+                        'is_mitigated': fvg.is_mitigated
+                    } for fvg in fvgs
+                ]
+            else:
+                # For concepts 7-20, call the appropriate methods
+                concept_methods = {
+                    7: market_structure_analyzer.concept_7_rejection_blocks,
+                    8: market_structure_analyzer.concept_8_mitigation_blocks,
+                    9: market_structure_analyzer.concept_9_supply_demand_zones,
+                    10: market_structure_analyzer.concept_10_premium_discount_ote,
+                    11: market_structure_analyzer.concept_11_dealing_ranges,
+                    12: market_structure_analyzer.concept_12_swing_highs_swing_lows,
+                    13: market_structure_analyzer.concept_13_market_maker_buy_sell_models,
+                    14: market_structure_analyzer.concept_14_market_maker_programs,
+                    15: market_structure_analyzer.concept_15_judas_swing,
+                    16: market_structure_analyzer.concept_16_turtle_soup,
+                    17: market_structure_analyzer.concept_17_power_of_3,
+                    18: market_structure_analyzer.concept_18_optimal_trade_entry,
+                    19: market_structure_analyzer.concept_19_smt_divergence,
+                    20: market_structure_analyzer.concept_20_liquidity_voids_inefficiencies
+                }
+                if concept_id in concept_methods:
+                    result = concept_methods[concept_id](stock_data)
+        
+        # Time & Price concepts (21-30)
+        elif 21 <= concept_id <= 30:
+            concept_methods = {
+                21: time_price_analyzer.concept_21_stock_killzones,
+                22: time_price_analyzer.concept_22_stock_session_opens,
+                23: time_price_analyzer.concept_23_fibonacci_ratios,
+                24: time_price_analyzer.concept_24_daily_weekly_range_expectations,
+                25: time_price_analyzer.concept_25_session_liquidity_raids,
+                26: time_price_analyzer.concept_26_weekly_profiles,
+                27: time_price_analyzer.concept_27_daily_bias,
+                28: time_price_analyzer.concept_28_weekly_bias,
+                29: time_price_analyzer.concept_29_monthly_bias,
+                30: time_price_analyzer.concept_30_time_of_day_highs_lows
+            }
+            if concept_id in concept_methods:
+                result = concept_methods[concept_id](stock_data)
+        
+        # Risk Management concepts (31-39)
+        elif 31 <= concept_id <= 39:
+            # These require additional parameters, using example data
+            example_trades = [
+                {
+                    'trade_id': f'trade_{symbol}_1',
+                    'timestamp': '2024-01-15 10:30:00',
+                    'symbol': symbol,
+                    'direction': 'LONG',
+                    'entry_price': stock_data['close'].iloc[-10] if len(stock_data) > 10 else stock_data['close'].iloc[0],
+                    'outcome': 'WIN',
+                    'pnl': 400
+                }
+            ]
+            
+            concept_methods = {
+                31: lambda data: risk_management_engine.concept_31_trade_journaling_backtesting(data, example_trades),
+                32: risk_management_engine.concept_32_entry_models_fvg_ob_breaker,
+                33: lambda data: risk_management_engine.concept_33_exit_models_partial_full_scaling(data, []),
+                34: lambda data: risk_management_engine.concept_34_risk_to_reward_optimization(data, []),
+                35: lambda data: risk_management_engine.concept_35_position_sizing_algorithms(50000, []),
+                36: lambda data: risk_management_engine.concept_36_drawdown_control([], 50000),
+                37: lambda data: risk_management_engine.concept_37_compounding_models(10000, 3.0, 5),
+                38: lambda data: risk_management_engine.concept_38_daily_loss_limits([], 50000),
+                39: lambda data: risk_management_engine.concept_39_probability_profiles_abc_setups([])
+            }
+            if concept_id in concept_methods:
+                result = concept_methods[concept_id](stock_data)
+        
+        # Advanced Concepts (40-50)
+        elif 40 <= concept_id <= 50:
+            concept_methods = {
+                40: lambda data: advanced_concepts_analyzer.concept_40_high_probability_scenarios({'1d': data, 'symbol': symbol}),
+                41: advanced_concepts_analyzer.concept_41_liquidity_runs,
+                42: advanced_concepts_analyzer.concept_42_reversals_vs_continuations,
+                43: advanced_concepts_analyzer.concept_43_accumulation_distribution_schematics,
+                44: advanced_concepts_analyzer.concept_44_order_flow_institutional_narrative,
+                45: advanced_concepts_analyzer.concept_45_high_low_day_identification,
+                46: advanced_concepts_analyzer.concept_46_range_expansion,
+                47: advanced_concepts_analyzer.concept_47_inside_outside_days,
+                48: advanced_concepts_analyzer.concept_48_weekly_profile_analysis,
+                49: advanced_concepts_analyzer.concept_49_ipda_theory,
+                50: advanced_concepts_analyzer.concept_50_algo_price_delivery
+            }
+            if concept_id in concept_methods:
+                result = concept_methods[concept_id](stock_data)
+        
+        # Strategies (51-65)
+        elif 51 <= concept_id <= 65:
+            concept_methods = {
+                51: ict_strategies_engine.concept_51_silver_bullet_strategy,
+                52: ict_strategies_engine.concept_52_pre_market_breakout_strategy,
+                53: ict_strategies_engine.concept_53_market_open_reversal,
+                54: ict_strategies_engine.concept_54_power_hour_strategy,
+                55: ict_strategies_engine.concept_55_fvg_sniper_entry,
+                56: ict_strategies_engine.concept_56_order_block_strategy,
+                57: ict_strategies_engine.concept_57_breaker_block_strategy,
+                58: ict_strategies_engine.concept_58_rejection_block_strategy,
+                59: lambda data: ict_strategies_engine.concept_59_smt_divergence_strategy({symbol: data}),
+                60: ict_strategies_engine.concept_60_turtle_soup_strategy,
+                61: ict_strategies_engine.concept_61_power_of_3_strategy,
+                62: ict_strategies_engine.concept_62_daily_bias_liquidity_strategy,
+                63: ict_strategies_engine.concept_63_morning_session_strategy,
+                64: ict_strategies_engine.concept_64_afternoon_reversal_strategy,
+                65: ict_strategies_engine.concept_65_optimal_trade_entry_strategy
+            }
+            if concept_id in concept_methods:
+                result = concept_methods[concept_id](stock_data)
+        
+        return JSONResponse(content=convert_numpy_types(result))
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error analyzing concept {concept_id} for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ICT Analysis Endpoints
 @app.get(f"{settings.API_V1_STR}/ict/analysis/{{symbol}}")
 @system_monitor.performance_monitor(cache_duration=300)  # Cache for 5 minutes

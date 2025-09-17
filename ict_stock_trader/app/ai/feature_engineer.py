@@ -34,56 +34,73 @@ class TechnicalIndicatorEngine:
         """Create price-based technical indicators"""
         indicators = pd.DataFrame(index=df.index)
         
+        # Ensure column names are lowercase
+        df_cols = {col.lower(): col for col in df.columns}
+        close_col = df_cols.get('close', 'close')
+        high_col = df_cols.get('high', 'high')
+        low_col = df_cols.get('low', 'low')
+        open_col = df_cols.get('open', 'open')
+        volume_col = df_cols.get('volume', 'volume')
+        
         # Moving averages (20 indicators)
         periods = [5, 10, 20, 50, 100, 200]
         for period in periods:
-            indicators[f'SMA_{period}'] = talib.SMA(df['Close'], timeperiod=period)
-            indicators[f'EMA_{period}'] = talib.EMA(df['Close'], timeperiod=period)
-            indicators[f'WMA_{period}'] = talib.WMA(df['Close'], timeperiod=period)
+            if len(df) >= period:
+                indicators[f'SMA_{period}'] = talib.SMA(df[close_col].values, timeperiod=period)
+                indicators[f'EMA_{period}'] = talib.EMA(df[close_col].values, timeperiod=period)
+                indicators[f'WMA_{period}'] = talib.WMA(df[close_col].values, timeperiod=period)
             
         # Bollinger Bands (9 indicators)
         for period in [20, 50]:
-            bb_upper, bb_middle, bb_lower = talib.BBANDS(df['Close'], timeperiod=period)
-            indicators[f'BB_Upper_{period}'] = bb_upper
-            indicators[f'BB_Middle_{period}'] = bb_middle
-            indicators[f'BB_Lower_{period}'] = bb_lower
-            indicators[f'BB_Width_{period}'] = (bb_upper - bb_lower) / bb_middle
+            if len(df) >= period:
+                bb_upper, bb_middle, bb_lower = talib.BBANDS(df[close_col].values, timeperiod=period)
+                indicators[f'BB_Upper_{period}'] = bb_upper
+                indicators[f'BB_Middle_{period}'] = bb_middle
+                indicators[f'BB_Lower_{period}'] = bb_lower
+                indicators[f'BB_Width_{period}'] = (bb_upper - bb_lower) / np.where(bb_middle != 0, bb_middle, 1)
             
         # Price channels and ranges (12 indicators)
         for period in [20, 50]:
-            high_roll = df['High'].rolling(period)
-            low_roll = df['Low'].rolling(period)
-            indicators[f'Highest_{period}'] = high_roll.max()
-            indicators[f'Lowest_{period}'] = low_roll.min()
-            indicators[f'Channel_Width_{period}'] = indicators[f'Highest_{period}'] - indicators[f'Lowest_{period}']
-            indicators[f'Price_Position_{period}'] = (df['Close'] - indicators[f'Lowest_{period}']) / indicators[f'Channel_Width_{period}']
+            if len(df) >= period:
+                high_roll = df[high_col].rolling(period)
+                low_roll = df[low_col].rolling(period)
+                indicators[f'Highest_{period}'] = high_roll.max()
+                indicators[f'Lowest_{period}'] = low_roll.min()
+                indicators[f'Channel_Width_{period}'] = indicators[f'Highest_{period}'] - indicators[f'Lowest_{period}']
+                channel_width = indicators[f'Channel_Width_{period}']
+                indicators[f'Price_Position_{period}'] = np.where(
+                    channel_width != 0,
+                    (df[close_col] - indicators[f'Lowest_{period}']) / channel_width,
+                    0.5
+                )
             
         # Pivot points (7 indicators)
-        pivot = (df['High'] + df['Low'] + df['Close']) / 3
+        pivot = (df[high_col] + df[low_col] + df[close_col]) / 3
         indicators['Pivot'] = pivot
-        indicators['R1'] = 2 * pivot - df['Low']
-        indicators['R2'] = pivot + (df['High'] - df['Low'])
-        indicators['S1'] = 2 * pivot - df['High']
-        indicators['S2'] = pivot - (df['High'] - df['Low'])
-        indicators['R3'] = df['High'] + 2 * (pivot - df['Low'])
-        indicators['S3'] = df['Low'] - 2 * (df['High'] - pivot)
+        indicators['R1'] = 2 * pivot - df[low_col]
+        indicators['R2'] = pivot + (df[high_col] - df[low_col])
+        indicators['S1'] = 2 * pivot - df[high_col]
+        indicators['S2'] = pivot - (df[high_col] - df[low_col])
+        indicators['R3'] = df[high_col] + 2 * (pivot - df[low_col])
+        indicators['S3'] = df[low_col] - 2 * (df[high_col] - pivot)
         
         # Fibonacci levels (8 indicators)
-        high_20 = df['High'].rolling(20).max()
-        low_20 = df['Low'].rolling(20).min()
-        fib_range = high_20 - low_20
-        indicators['Fib_23.6'] = high_20 - 0.236 * fib_range
-        indicators['Fib_38.2'] = high_20 - 0.382 * fib_range
-        indicators['Fib_50.0'] = high_20 - 0.500 * fib_range
-        indicators['Fib_61.8'] = high_20 - 0.618 * fib_range
-        indicators['Fib_78.6'] = high_20 - 0.786 * fib_range
+        if len(df) >= 20:
+            high_20 = df[high_col].rolling(20).max()
+            low_20 = df[low_col].rolling(20).min()
+            fib_range = high_20 - low_20
+            indicators['Fib_23.6'] = high_20 - 0.236 * fib_range
+            indicators['Fib_38.2'] = high_20 - 0.382 * fib_range
+            indicators['Fib_50.0'] = high_20 - 0.500 * fib_range
+            indicators['Fib_61.8'] = high_20 - 0.618 * fib_range
+            indicators['Fib_78.6'] = high_20 - 0.786 * fib_range
         
         # Price patterns (5 indicators)
-        indicators['Doji'] = abs(df['Close'] - df['Open']) / (df['High'] - df['Low'] + 1e-10)
-        indicators['Upper_Shadow'] = df['High'] - np.maximum(df['Open'], df['Close'])
-        indicators['Lower_Shadow'] = np.minimum(df['Open'], df['Close']) - df['Low']
-        indicators['Body_Size'] = abs(df['Close'] - df['Open'])
-        indicators['True_Range'] = talib.TRANGE(df['High'], df['Low'], df['Close'])
+        indicators['Doji'] = abs(df[close_col] - df[open_col]) / (df[high_col] - df[low_col] + 1e-10)
+        indicators['Upper_Shadow'] = df[high_col] - np.maximum(df[open_col], df[close_col])
+        indicators['Lower_Shadow'] = np.minimum(df[open_col], df[close_col]) - df[low_col]
+        indicators['Body_Size'] = abs(df[close_col] - df[open_col])
+        indicators['True_Range'] = talib.TRANGE(df[high_col].values, df[low_col].values, df[close_col].values)
         
         self.indicator_count += indicators.shape[1]
         return indicators
@@ -92,15 +109,31 @@ class TechnicalIndicatorEngine:
         """Create volume-based technical indicators"""
         indicators = pd.DataFrame(index=df.index)
         
+        # Ensure column names are lowercase
+        df_cols = {col.lower(): col for col in df.columns}
+        close_col = df_cols.get('close', 'close')
+        high_col = df_cols.get('high', 'high')
+        low_col = df_cols.get('low', 'low')
+        volume_col = df_cols.get('volume', 'volume')
+        
         # Volume moving averages (6 indicators)
         for period in [10, 20, 50]:
-            indicators[f'Volume_SMA_{period}'] = df['Volume'].rolling(period).mean()
-            indicators[f'Volume_Ratio_{period}'] = df['Volume'] / indicators[f'Volume_SMA_{period}']
+            if len(df) >= period:
+                vol_sma = df[volume_col].rolling(period).mean()
+                indicators[f'Volume_SMA_{period}'] = vol_sma
+                indicators[f'Volume_Ratio_{period}'] = df[volume_col] / np.where(vol_sma != 0, vol_sma, 1)
             
         # Volume trend indicators (10 indicators)
-        indicators['OBV'] = talib.OBV(df['Close'], df['Volume'])
-        indicators['AD'] = talib.AD(df['High'], df['Low'], df['Close'], df['Volume'])
-        indicators['ADOSC'] = talib.ADOSC(df['High'], df['Low'], df['Close'], df['Volume'])
+        try:
+            indicators['OBV'] = talib.OBV(df[close_col].values, df[volume_col].values)
+            indicators['AD'] = talib.AD(df[high_col].values, df[low_col].values, df[close_col].values, df[volume_col].values)
+            indicators['ADOSC'] = talib.ADOSC(df[high_col].values, df[low_col].values, df[close_col].values, df[volume_col].values)
+        except Exception as e:
+            logger.warning(f"Error creating volume indicators: {e}")
+            # Set default values if calculation fails
+            indicators['OBV'] = 0
+            indicators['AD'] = 0
+            indicators['ADOSC'] = 0
         
         # Volume-weighted price indicators (8 indicators)
         for period in [10, 20]:
