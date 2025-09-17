@@ -18,6 +18,7 @@ from app.ict_engine.time_price import time_price_analyzer
 from app.ict_engine.risk_management import risk_management_engine
 from app.ict_engine.advanced_concepts import advanced_concepts_analyzer
 from app.ict_engine.strategies import ict_strategies_engine
+from app.system_monitor import system_monitor, db_optimizer, get_health_status
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -64,12 +65,82 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now(),
-        "version": settings.VERSION
-    }
+    """
+    Comprehensive health check endpoint with system monitoring
+    """
+    try:
+        health_status = get_health_status()
+        return {
+            "status": "healthy" if health_status["health_status"] == "healthy" else "degraded",
+            "timestamp": datetime.now(),
+            "version": settings.VERSION,
+            "system_health": health_status
+        }
+    except Exception as e:
+        logging.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.now(),
+            "error": str(e)
+        }
+
+@app.get("/health/detailed")
+async def detailed_health_check():
+    """
+    Detailed health check with performance metrics
+    """
+    try:
+        health_status = get_health_status()
+        performance_report = system_monitor.get_performance_report()
+        
+        return {
+            "timestamp": datetime.now(),
+            "system_health": health_status,
+            "performance_metrics": performance_report,
+            "database_status": db_optimizer.get_database_stats()
+        }
+    except Exception as e:
+        logging.error(f"Detailed health check failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/system/optimize")
+async def optimize_system():
+    """
+    Trigger system optimization (cache cleanup, database optimization)
+    """
+    try:
+        # Clear cache
+        system_monitor.clear_cache()
+        
+        # Optimize database
+        db_optimizer.optimize_database()
+        
+        # Run performance optimization
+        system_monitor.optimize_performance()
+        
+        return {
+            "message": "System optimization completed",
+            "timestamp": datetime.now(),
+            "actions_performed": [
+                "Cache cleared",
+                "Database optimized", 
+                "Performance analysis completed"
+            ]
+        }
+    except Exception as e:
+        logging.error(f"System optimization failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/system/metrics")
+async def get_system_metrics():
+    """
+    Get real-time system performance metrics
+    """
+    try:
+        return system_monitor.get_performance_report()
+    except Exception as e:
+        logging.error(f"Failed to get system metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Stock Data Endpoints
 @app.get(f"{settings.API_V1_STR}/stocks/{{symbol}}/data")
@@ -137,13 +208,14 @@ async def get_multiple_stocks_data(
 
 # ICT Analysis Endpoints
 @app.get(f"{settings.API_V1_STR}/ict/analysis/{{symbol}}")
+@system_monitor.performance_monitor(cache_duration=300)  # Cache for 5 minutes
 async def get_ict_analysis(
     symbol: str,
     timeframe: str = "1d",
     concepts: Optional[str] = None  # Comma-separated list of concept numbers
 ):
     """
-    Get comprehensive ICT analysis for a stock
+    Get comprehensive ICT analysis for a stock with performance monitoring
     """
     try:
         symbol = symbol.upper()
@@ -569,12 +641,13 @@ async def get_default_watchlist():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get(f"{settings.API_V1_STR}/sector/correlation/{{symbol}}")
+@system_monitor.performance_monitor(cache_duration=600)  # Cache for 10 minutes
 async def get_sector_correlation_analysis(
     symbol: str,
     sector_stocks: Optional[str] = None  # Comma-separated list of sector stocks
 ):
     """
-    Get sector correlation analysis for ICT trading strategies
+    Get sector correlation analysis for ICT trading strategies with performance monitoring
     - Cross-sector divergence analysis
     - Relative strength within sector
     - Institutional rotation signals
