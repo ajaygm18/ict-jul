@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+SQLAlchemy
+yfinance
+fredapi
+newsapi-python
+pandas
+numpy
+python-jose[cryptography]
+passlib[bcrypt]
+apscheduler
+pytest
+httpx
+pytest-asyncio
