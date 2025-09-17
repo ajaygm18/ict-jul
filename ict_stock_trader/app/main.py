@@ -225,6 +225,29 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(item) for item in obj]
     elif isinstance(obj, tuple):
         return tuple(convert_numpy_types(item) for item in obj)
+    elif isinstance(obj, pd.DataFrame):
+        # Convert DataFrame to dict with proper handling of complex types
+        try:
+            # First convert the DataFrame to have JSON-serializable data
+            df_copy = obj.copy()
+            for col in df_copy.columns:
+                if df_copy[col].dtype == 'datetime64[ns]' or df_copy[col].dtype.name.startswith('datetime'):
+                    df_copy[col] = df_copy[col].astype(str)
+                elif df_copy[col].dtype == 'object':
+                    # Handle object columns that might contain timestamps or other complex types
+                    df_copy[col] = df_copy[col].astype(str)
+            
+            result = df_copy.to_dict('records')
+            return convert_numpy_types(result)
+        except Exception as e:
+            # Fallback to simple summary if conversion fails
+            return {"dataframe_summary": f"DataFrame with {len(obj)} rows and {len(obj.columns)} columns", "error": str(e)}
+    elif isinstance(obj, pd.Series):
+        # Convert Series to list
+        try:
+            return obj.tolist()
+        except:
+            return {"series_info": f"Series with length {len(obj)}"}
     elif dataclasses.is_dataclass(obj):
         # Convert dataclass to dict
         return convert_numpy_types(dataclasses.asdict(obj))
@@ -624,7 +647,8 @@ async def get_market_overview():
         # Calculate market sentiment
         market_sentiment = _calculate_market_sentiment(market_data)
         
-        return {
+        # Convert and return response
+        response_data = {
             "timestamp": datetime.now(),
             "market_indices": market_data.get('stocks', {}),
             "economic_indicators": market_data.get('economic_indicators', {}),
@@ -632,6 +656,8 @@ async def get_market_overview():
             "market_sentiment": market_sentiment,
             "news": market_data.get('news', [])[:5]  # Top 5 news items
         }
+        
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error in market overview: {e}")
@@ -682,11 +708,14 @@ async def get_default_watchlist():
                     }
                 }
         
-        return {
+        # Convert and return response
+        response_data = {
             "timestamp": datetime.now(),
             "watchlist": enhanced_watchlist,
             "market_context": watchlist_data.get('market_context', {})
         }
+        
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error in watchlist analysis: {e}")
@@ -749,7 +778,8 @@ async def get_sector_correlation_analysis(
             smt_analysis = ict_strategies_engine.concept_59_smt_divergence_strategy(correlated_data)
             ict_sector_insights['smt_divergence_opportunities'] = smt_analysis
         
-        return {
+        # Convert and return response
+        response_data = {
             "symbol": symbol,
             "sector_stocks_analyzed": sector_stock_list,
             "analysis_timestamp": datetime.now(),
@@ -759,6 +789,8 @@ async def get_sector_correlation_analysis(
                 sector_analysis, ict_sector_insights
             )
         }
+        
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except HTTPException:
         raise
@@ -995,7 +1027,10 @@ async def train_ai_models(
             end_date
         )
         
-        return {
+        # AI/ML Endpoints - Convert all remaining endpoints to use JSONResponse
+        
+        # Fix AI training endpoint
+        response_data = {
             "message": "AI model training started",
             "symbols": symbol_list,
             "start_date": start_date,
@@ -1003,6 +1038,7 @@ async def train_ai_models(
             "status": "training_initiated",
             "timestamp": datetime.now().isoformat()
         }
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error initiating AI training: {e}")
