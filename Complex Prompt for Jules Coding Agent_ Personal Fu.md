@@ -20,7 +20,6 @@ Build a complete, personal-use full-stack ICT (Inner Circle Trader) trading AI a
 │ • FRED API (economic indicators & market data)         │
 │ • NewsAPI (financial news sentiment)                   │
 │ • Yahoo Finance WebSocket (real-time stock quotes)     │
-│ • SEC EDGAR (fundamental data)                         │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -766,7 +765,6 @@ API Documentation: FastAPI auto-generated docs
 Primary Data: yfinance (Yahoo Finance)
 Economic Data: FRED API (Federal Reserve)
 News Data: NewsAPI (financial news only)
-Fundamental Data: SEC EDGAR API
 Market Hours: NYSE/NASDAQ trading calendar
 ```
 
