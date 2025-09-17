@@ -14,12 +14,12 @@ import os
 # Add the app directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'app'))
 
-from main import app
-from ict_engine.core_concepts import market_structure_analyzer
-from ict_engine.time_price import time_price_analyzer
-from ict_engine.risk_management import risk_management_engine
-from ict_engine.advanced_concepts import advanced_concepts_analyzer
-from ict_engine.strategies import ict_strategies_engine
+from app.main import app
+from app.ict_engine.core_concepts import market_structure_analyzer
+from app.ict_engine.time_price import time_price_analyzer
+from app.ict_engine.risk_management import risk_management_engine
+from app.ict_engine.advanced_concepts import advanced_concepts_analyzer
+from app.ict_engine.strategies import ict_strategies_engine
 
 # Create test client
 client = TestClient(app)

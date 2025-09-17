@@ -49,75 +49,144 @@ class ICTSystemMonitor:
     def performance_monitor(self, cache_duration: Optional[int] = None):
         """Decorator to monitor function performance and cache results"""
         def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                start_time = time.time()
-                start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-                start_cpu = psutil.Process().cpu_percent()
+            if asyncio.iscoroutinefunction(func):
+                @wraps(func)
+                async def async_wrapper(*args, **kwargs):
+                    start_time = time.time()
+                    start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+                    start_cpu = psutil.Process().cpu_percent()
+                    
+                    function_name = f"{func.__module__}.{func.__name__}"
+                    
+                    # Check cache first
+                    cache_key = self._generate_cache_key(function_name, args, kwargs)
+                    cached_result = self._get_from_cache(cache_key)
+                    
+                    if cached_result is not None:
+                        logger.debug(f"Cache hit for {function_name}")
+                        return cached_result
+                    
+                    try:
+                        # Execute async function
+                        result = await func(*args, **kwargs)
+                        
+                        # Calculate performance metrics
+                        end_time = time.time()
+                        end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+                        end_cpu = psutil.Process().cpu_percent()
+                        
+                        execution_time = end_time - start_time
+                        memory_delta = end_memory - start_memory
+                        cpu_delta = end_cpu - start_cpu
+                        
+                        # Log performance metrics
+                        metrics = PerformanceMetrics(
+                            function_name=function_name,
+                            execution_time=execution_time,
+                            memory_usage=memory_delta,
+                            cpu_usage=cpu_delta,
+                            timestamp=datetime.now(),
+                            success=True
+                        )
+                        
+                        self._record_metrics(metrics)
+                        
+                        # Cache result
+                        duration = cache_duration or self.default_cache_duration
+                        self._set_cache(cache_key, result, duration)
+                        
+                        logger.debug(f"{function_name} executed in {execution_time:.3f}s")
+                        
+                        return result
+                        
+                    except Exception as e:
+                        end_time = time.time()
+                        execution_time = end_time - start_time
+                        
+                        metrics = PerformanceMetrics(
+                            function_name=function_name,
+                            execution_time=execution_time,
+                            memory_usage=0,
+                            cpu_usage=0,
+                            timestamp=datetime.now(),
+                            success=False,
+                            error_message=str(e)
+                        )
+                        
+                        self._record_metrics(metrics)
+                        logger.error(f"Error in {function_name}: {e}")
+                        raise
                 
-                function_name = f"{func.__module__}.{func.__name__}"
+                return async_wrapper
+            else:
+                @wraps(func)
+                def sync_wrapper(*args, **kwargs):
+                    start_time = time.time()
+                    start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+                    start_cpu = psutil.Process().cpu_percent()
+                    
+                    function_name = f"{func.__module__}.{func.__name__}"
+                    
+                    # Check cache first
+                    cache_key = self._generate_cache_key(function_name, args, kwargs)
+                    cached_result = self._get_from_cache(cache_key)
+                    
+                    if cached_result is not None:
+                        logger.debug(f"Cache hit for {function_name}")
+                        return cached_result
+                    
+                    try:
+                        # Execute function
+                        result = func(*args, **kwargs)
+                        
+                        # Calculate performance metrics
+                        end_time = time.time()
+                        end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+                        end_cpu = psutil.Process().cpu_percent()
+                        
+                        execution_time = end_time - start_time
+                        memory_delta = end_memory - start_memory
+                        cpu_delta = end_cpu - start_cpu
+                        
+                        # Log performance metrics
+                        metrics = PerformanceMetrics(
+                            function_name=function_name,
+                            execution_time=execution_time,
+                            memory_usage=memory_delta,
+                            cpu_usage=cpu_delta,
+                            timestamp=datetime.now(),
+                            success=True
+                        )
+                        
+                        self._record_metrics(metrics)
+                        
+                        # Cache result
+                        duration = cache_duration or self.default_cache_duration
+                        self._set_cache(cache_key, result, duration)
+                        
+                        logger.debug(f"{function_name} executed in {execution_time:.3f}s")
+                        
+                        return result
+                        
+                    except Exception as e:
+                        end_time = time.time()
+                        execution_time = end_time - start_time
+                        
+                        metrics = PerformanceMetrics(
+                            function_name=function_name,
+                            execution_time=execution_time,
+                            memory_usage=0,
+                            cpu_usage=0,
+                            timestamp=datetime.now(),
+                            success=False,
+                            error_message=str(e)
+                        )
+                        
+                        self._record_metrics(metrics)
+                        logger.error(f"Error in {function_name}: {e}")
+                        raise
                 
-                # Check cache first
-                cache_key = self._generate_cache_key(function_name, args, kwargs)
-                cached_result = self._get_from_cache(cache_key)
-                
-                if cached_result is not None:
-                    logger.debug(f"Cache hit for {function_name}")
-                    return cached_result
-                
-                try:
-                    # Execute function
-                    result = func(*args, **kwargs)
-                    
-                    # Calculate performance metrics
-                    end_time = time.time()
-                    end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-                    end_cpu = psutil.Process().cpu_percent()
-                    
-                    execution_time = end_time - start_time
-                    memory_delta = end_memory - start_memory
-                    cpu_delta = end_cpu - start_cpu
-                    
-                    # Log performance metrics
-                    metrics = PerformanceMetrics(
-                        function_name=function_name,
-                        execution_time=execution_time,
-                        memory_usage=memory_delta,
-                        cpu_usage=cpu_delta,
-                        timestamp=datetime.now(),
-                        success=True
-                    )
-                    
-                    self._record_metrics(metrics)
-                    
-                    # Cache result
-                    duration = cache_duration or self.default_cache_duration
-                    self._set_cache(cache_key, result, duration)
-                    
-                    logger.debug(f"{function_name} executed in {execution_time:.3f}s")
-                    
-                    return result
-                    
-                except Exception as e:
-                    # Log error metrics
-                    end_time = time.time()
-                    execution_time = end_time - start_time
-                    
-                    metrics = PerformanceMetrics(
-                        function_name=function_name,
-                        execution_time=execution_time,
-                        memory_usage=0,
-                        cpu_usage=0,
-                        timestamp=datetime.now(),
-                        success=False,
-                        error_message=str(e)
-                    )
-                    
-                    self._record_metrics(metrics)
-                    logger.error(f"Error in {function_name}: {e}")
-                    raise
-                    
-            return wrapper
+                return sync_wrapper
         return decorator
     
     def _generate_cache_key(self, function_name: str, args: tuple, kwargs: dict) -> str:

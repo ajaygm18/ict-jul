@@ -354,9 +354,19 @@ class DataProcessor:
         Process real-time data for a single symbol with all enhancements
         """
         try:
+            # Determine appropriate period based on timeframe
+            if timeframe in ["1d", "1D", "daily"]:
+                period = "1y"  # 1 year of daily data
+            elif timeframe in ["1h", "1H", "hour", "hourly"]:
+                period = "1mo"  # 1 month of hourly data  
+            elif timeframe in ["5m", "15m", "30m"]:
+                period = "5d"  # 5 days of minute data
+            else:
+                period = "1d"  # Default for minute data
+                
             # Get raw data
             raw_data = await self.yf_client.get_real_time_stock_data(
-                symbol, period="1d", interval=timeframe
+                symbol, period=period, interval=timeframe
             )
             
             if raw_data.empty:

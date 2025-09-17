@@ -3,11 +3,14 @@ FastAPI Main Application for ICT Stock Trader
 """
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import uvicorn
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import logging
+import numpy as np
+import pandas as pd
 
 # Import configurations and dependencies
 from config.settings import settings
@@ -209,6 +212,46 @@ async def get_multiple_stocks_data(
     except Exception as e:
         logger.error(f"Error fetching multiple stocks data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Helper function to convert numpy types to Python types for JSON serialization
+def convert_numpy_types(obj):
+    """Convert numpy types to Python types for JSON serialization"""
+    import dataclasses
+    from enum import Enum
+    
+    if isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_types(item) for item in obj)
+    elif dataclasses.is_dataclass(obj):
+        # Convert dataclass to dict
+        return convert_numpy_types(dataclasses.asdict(obj))
+    elif isinstance(obj, Enum):
+        # Convert enum to its value
+        return obj.value
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, (np.floating, float)):
+        if np.isnan(obj) or np.isinf(obj):
+            return None  # Convert NaN and infinity to null
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        # Handle arrays by converting to list and processing each element
+        return [convert_numpy_types(item) for item in obj.tolist()]
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif hasattr(obj, 'isoformat') and callable(obj.isoformat):
+        return obj.isoformat()
+    elif hasattr(obj, 'item') and callable(obj.item):  # Handle numpy scalars
+        return convert_numpy_types(obj.item())
+    else:
+        return obj
 
 # ICT Analysis Endpoints
 @app.get(f"{settings.API_V1_STR}/ict/analysis/{{symbol}}")
@@ -541,7 +584,8 @@ async def get_ict_analysis(
             if not requested_concepts or 65 in requested_concepts:
                 analysis_results['concept_65_optimal_trade_entry'] = ict_strategies_engine.concept_65_optimal_trade_entry_strategy(stock_data)
         
-        return {
+        # Convert numpy types for JSON serialization
+        response_data = {
             "symbol": symbol,
             "timeframe": timeframe,
             "analysis_timestamp": datetime.now(),
@@ -549,6 +593,10 @@ async def get_ict_analysis(
             "ict_analysis": analysis_results,
             "summary": _generate_analysis_summary(analysis_results)
         }
+        
+        # Convert numpy types and return as JSONResponse
+        converted_data = convert_numpy_types(response_data)
+        return JSONResponse(content=converted_data)
         
     except HTTPException:
         raise
