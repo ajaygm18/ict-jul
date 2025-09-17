@@ -1,0 +1,42 @@
+# Core FastAPI framework
+fastapi
+uvicorn[standard]
+pydantic
+
+# Database
+sqlalchemy
+alembic
+
+# Data analysis and stock market
+yfinance
+fredapi
+newsapi-python
+pandas
+numpy
+ta-lib
+pandas-ta
+
+# Machine Learning
+scikit-learn
+torch
+transformers
+
+# Async and task scheduling
+asyncio
+apscheduler
+
+# Security
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# Utilities
+python-dotenv
+requests
+aiohttp
+websockets
+
+# Development
+pytest
+pytest-asyncio
+httpx
