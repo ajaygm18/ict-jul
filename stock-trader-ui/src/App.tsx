@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   AppBar,
@@ -17,17 +17,23 @@ import {
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
-  TrendingUp as TrendingUpIcon,
   Analytics as AnalyticsIcon,
   AccountBalance as AccountBalanceIcon,
   Settings as SettingsIcon,
+  PlayArrow as PlayArrowIcon,
+  Notifications as NotificationsIcon,
+  Assessment as AssessmentIcon,
+  ShowChart as ShowChartIcon,
 } from '@mui/icons-material';
 
-// Import components (we'll create these)
+// Import components
 import Dashboard from './components/Dashboard/Dashboard';
 import StockAnalysis from './components/PatternAnalysis/StockAnalysis';
 import TradingView from './components/Charts/TradingView';
 import Portfolio from './components/Portfolio/Portfolio';
+import StrategyBacktesting from './components/Backtesting/StrategyBacktesting';
+import RealTimeAlerts from './components/Alerts/RealTimeAlerts';
+import PerformanceAnalytics from './components/Analytics/PerformanceAnalytics';
 
 const DRAWER_WIDTH = 240;
 
@@ -42,7 +48,10 @@ function App() {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Stock Analysis', icon: <AnalyticsIcon />, path: '/analysis' },
-    { text: 'Trading Charts', icon: <TrendingUpIcon />, path: '/charts' },
+    { text: 'Trading Charts', icon: <ShowChartIcon />, path: '/charts' },
+    { text: 'Strategy Backtesting', icon: <PlayArrowIcon />, path: '/backtesting' },
+    { text: 'Performance Analytics', icon: <AssessmentIcon />, path: '/analytics' },
+    { text: 'Real-Time Alerts', icon: <NotificationsIcon />, path: '/alerts' },
     { text: 'Portfolio', icon: <AccountBalanceIcon />, path: '/portfolio' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   ];
@@ -56,7 +65,7 @@ function App() {
       </Toolbar>
       <List>
         {menuItems.map((item) => (
-          <ListItem button key={item.text}>
+          <ListItem button key={item.text} component="a" href={item.path}>
             <ListItemIcon sx={{ color: theme.palette.text.primary }}>
               {item.icon}
             </ListItemIcon>
@@ -142,6 +151,9 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/analysis" element={<StockAnalysis />} />
             <Route path="/charts" element={<TradingView />} />
+            <Route path="/backtesting" element={<StrategyBacktesting />} />
+            <Route path="/analytics" element={<PerformanceAnalytics />} />
+            <Route path="/alerts" element={<RealTimeAlerts />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/settings" element={<div>Settings Coming Soon</div>} />
           </Routes>
