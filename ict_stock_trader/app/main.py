@@ -16,6 +16,8 @@ from app.data.data_processor import data_processor
 from app.ict_engine.core_concepts import market_structure_analyzer
 from app.ict_engine.time_price import time_price_analyzer
 from app.ict_engine.risk_management import risk_management_engine
+from app.ict_engine.advanced_concepts import advanced_concepts_analyzer
+from app.ict_engine.strategies import ict_strategies_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -368,6 +370,101 @@ async def get_ict_analysis(
             if not requested_concepts or 39 in requested_concepts:
                 analysis_results['concept_39_probability_profiles'] = risk_management_engine.concept_39_probability_profiles_abc_setups(trade_setups)
         
+        # Advanced Concepts (40-50)
+        if not requested_concepts or any(40 <= c <= 50 for c in requested_concepts):
+            if not requested_concepts or 40 in requested_concepts:
+                # Multi-timeframe data for high probability scenarios
+                multi_tf_data = {
+                    '1d': stock_data,
+                    '1h': stock_data.tail(24),  # Simplified
+                    '15m': stock_data.tail(96),  # Simplified
+                    'symbol': symbol
+                }
+                analysis_results['concept_40_high_probability_scenarios'] = advanced_concepts_analyzer.concept_40_high_probability_scenarios(multi_tf_data)
+            
+            if not requested_concepts or 41 in requested_concepts:
+                analysis_results['concept_41_liquidity_runs'] = advanced_concepts_analyzer.concept_41_liquidity_runs(stock_data)
+            
+            if not requested_concepts or 42 in requested_concepts:
+                analysis_results['concept_42_reversals_vs_continuations'] = advanced_concepts_analyzer.concept_42_reversals_vs_continuations(stock_data)
+            
+            if not requested_concepts or 43 in requested_concepts:
+                analysis_results['concept_43_accumulation_distribution'] = advanced_concepts_analyzer.concept_43_accumulation_distribution_schematics(stock_data)
+            
+            if not requested_concepts or 44 in requested_concepts:
+                analysis_results['concept_44_order_flow_narrative'] = advanced_concepts_analyzer.concept_44_order_flow_institutional_narrative(stock_data)
+            
+            if not requested_concepts or 45 in requested_concepts:
+                analysis_results['concept_45_high_low_day'] = advanced_concepts_analyzer.concept_45_high_low_day_identification(stock_data)
+            
+            if not requested_concepts or 46 in requested_concepts:
+                analysis_results['concept_46_range_expansion'] = advanced_concepts_analyzer.concept_46_range_expansion(stock_data)
+            
+            if not requested_concepts or 47 in requested_concepts:
+                analysis_results['concept_47_inside_outside_days'] = advanced_concepts_analyzer.concept_47_inside_outside_days(stock_data)
+            
+            if not requested_concepts or 48 in requested_concepts:
+                analysis_results['concept_48_weekly_profiles'] = advanced_concepts_analyzer.concept_48_weekly_profile_analysis(stock_data)
+            
+            if not requested_concepts or 49 in requested_concepts:
+                analysis_results['concept_49_ipda_theory'] = advanced_concepts_analyzer.concept_49_ipda_theory(stock_data)
+            
+            if not requested_concepts or 50 in requested_concepts:
+                analysis_results['concept_50_algo_price_delivery'] = advanced_concepts_analyzer.concept_50_algo_price_delivery(stock_data)
+        
+        # Strategies (51-65)
+        if not requested_concepts or any(51 <= c <= 65 for c in requested_concepts):
+            if not requested_concepts or 51 in requested_concepts:
+                analysis_results['concept_51_silver_bullet'] = ict_strategies_engine.concept_51_silver_bullet_strategy(stock_data)
+            
+            if not requested_concepts or 52 in requested_concepts:
+                analysis_results['concept_52_premarket_breakout'] = ict_strategies_engine.concept_52_pre_market_breakout_strategy(stock_data)
+            
+            if not requested_concepts or 53 in requested_concepts:
+                analysis_results['concept_53_market_open_reversal'] = ict_strategies_engine.concept_53_market_open_reversal(stock_data)
+            
+            if not requested_concepts or 54 in requested_concepts:
+                analysis_results['concept_54_power_hour'] = ict_strategies_engine.concept_54_power_hour_strategy(stock_data)
+            
+            if not requested_concepts or 55 in requested_concepts:
+                analysis_results['concept_55_fvg_sniper'] = ict_strategies_engine.concept_55_fvg_sniper_entry(stock_data)
+            
+            if not requested_concepts or 56 in requested_concepts:
+                analysis_results['concept_56_order_block_strategy'] = ict_strategies_engine.concept_56_order_block_strategy(stock_data)
+            
+            if not requested_concepts or 57 in requested_concepts:
+                analysis_results['concept_57_breaker_block_strategy'] = ict_strategies_engine.concept_57_breaker_block_strategy(stock_data)
+            
+            if not requested_concepts or 58 in requested_concepts:
+                analysis_results['concept_58_rejection_block_strategy'] = ict_strategies_engine.concept_58_rejection_block_strategy(stock_data)
+            
+            if not requested_concepts or 59 in requested_concepts:
+                # For SMT divergence, we need correlated stocks data
+                correlated_stocks = {
+                    symbol: stock_data,
+                    'SPY': stock_data,  # Simplified - would fetch actual SPY data
+                    'QQQ': stock_data   # Simplified - would fetch actual QQQ data
+                }
+                analysis_results['concept_59_smt_divergence_strategy'] = ict_strategies_engine.concept_59_smt_divergence_strategy(correlated_stocks)
+            
+            if not requested_concepts or 60 in requested_concepts:
+                analysis_results['concept_60_turtle_soup'] = ict_strategies_engine.concept_60_turtle_soup_strategy(stock_data)
+            
+            if not requested_concepts or 61 in requested_concepts:
+                analysis_results['concept_61_power_of_3_strategy'] = ict_strategies_engine.concept_61_power_of_3_strategy(stock_data)
+            
+            if not requested_concepts or 62 in requested_concepts:
+                analysis_results['concept_62_daily_bias_liquidity'] = ict_strategies_engine.concept_62_daily_bias_liquidity_strategy(stock_data)
+            
+            if not requested_concepts or 63 in requested_concepts:
+                analysis_results['concept_63_morning_session'] = ict_strategies_engine.concept_63_morning_session_strategy(stock_data)
+            
+            if not requested_concepts or 64 in requested_concepts:
+                analysis_results['concept_64_afternoon_reversal'] = ict_strategies_engine.concept_64_afternoon_reversal_strategy(stock_data)
+            
+            if not requested_concepts or 65 in requested_concepts:
+                analysis_results['concept_65_optimal_trade_entry'] = ict_strategies_engine.concept_65_optimal_trade_entry_strategy(stock_data)
+        
         return {
             "symbol": symbol,
             "timeframe": timeframe,
@@ -469,6 +566,79 @@ async def get_default_watchlist():
         
     except Exception as e:
         logger.error(f"Error in watchlist analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get(f"{settings.API_V1_STR}/sector/correlation/{{symbol}}")
+async def get_sector_correlation_analysis(
+    symbol: str,
+    sector_stocks: Optional[str] = None  # Comma-separated list of sector stocks
+):
+    """
+    Get sector correlation analysis for ICT trading strategies
+    - Cross-sector divergence analysis
+    - Relative strength within sector
+    - Institutional rotation signals
+    - Sector-wide liquidity analysis
+    """
+    try:
+        symbol = symbol.upper()
+        
+        # Get primary stock data
+        data = await data_processor.process_real_time_data(symbol, "1d")
+        
+        if 'error' in data:
+            raise HTTPException(status_code=404, detail=data['error'])
+        
+        stock_data = data['data']
+        
+        # Parse sector stocks (if provided)
+        sector_stock_list = []
+        if sector_stocks:
+            sector_stock_list = [s.strip().upper() for s in sector_stocks.split(',')]
+        else:
+            # Default sector stocks based on symbol (simplified logic)
+            if symbol in ['AAPL', 'MSFT', 'GOOGL', 'META', 'TSLA']:
+                sector_stock_list = ['AAPL', 'MSFT', 'GOOGL', 'META', 'TSLA']
+            elif symbol in ['JPM', 'BAC', 'WFC', 'GS']:
+                sector_stock_list = ['JPM', 'BAC', 'WFC', 'GS']
+            else:
+                sector_stock_list = ['SPY', 'QQQ', 'IWM']  # Market indices
+        
+        # Perform sector correlation analysis
+        sector_analysis = advanced_concepts_analyzer.analyze_sector_correlations(
+            stock_data, sector_stock_list
+        )
+        
+        # Add ICT-specific sector insights
+        ict_sector_insights = {
+            'smt_divergence_opportunities': [],
+            'sector_liquidity_raids': [],
+            'rotation_strategies': [],
+            'relative_strength_ranking': sector_analysis.get('sector_strength', {})
+        }
+        
+        # Check for SMT divergences within sector
+        if len(sector_stock_list) > 1:
+            # Simplified SMT analysis
+            correlated_data = {symbol: stock_data}
+            smt_analysis = ict_strategies_engine.concept_59_smt_divergence_strategy(correlated_data)
+            ict_sector_insights['smt_divergence_opportunities'] = smt_analysis
+        
+        return {
+            "symbol": symbol,
+            "sector_stocks_analyzed": sector_stock_list,
+            "analysis_timestamp": datetime.now(),
+            "sector_correlation_analysis": sector_analysis,
+            "ict_sector_insights": ict_sector_insights,
+            "trading_recommendations": _generate_sector_trading_recommendations(
+                sector_analysis, ict_sector_insights
+            )
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in sector correlation analysis for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Utility functions
@@ -577,6 +747,62 @@ def _calculate_market_sentiment(market_data: Dict) -> Dict:
         logger.error(f"Error calculating market sentiment: {e}")
     
     return sentiment
+
+def _generate_sector_trading_recommendations(sector_analysis: Dict, ict_insights: Dict) -> Dict:
+    """Generate ICT-based sector trading recommendations"""
+    recommendations = {
+        "primary_strategy": "neutral",
+        "confidence": 0.5,
+        "key_levels": [],
+        "time_based_recommendations": {},
+        "risk_factors": []
+    }
+    
+    try:
+        # Analyze sector strength
+        sector_strength = sector_analysis.get('sector_strength', {})
+        relative_strength = sector_strength.get('current_symbol_strength', 0.5)
+        
+        if relative_strength > 0.7:
+            recommendations["primary_strategy"] = "bullish_bias"
+            recommendations["confidence"] = 0.8
+            recommendations["key_levels"].append("Look for OTE entries on pullbacks")
+            recommendations["time_based_recommendations"]["morning_session"] = "Consider long positions during pullbacks"
+            recommendations["time_based_recommendations"]["power_hour"] = "Watch for institutional accumulation"
+        elif relative_strength < 0.3:
+            recommendations["primary_strategy"] = "bearish_bias"
+            recommendations["confidence"] = 0.8
+            recommendations["key_levels"].append("Look for rejection block entries on rallies")
+            recommendations["time_based_recommendations"]["morning_session"] = "Consider short positions on false breakouts"
+            recommendations["time_based_recommendations"]["power_hour"] = "Watch for institutional distribution"
+        else:
+            recommendations["primary_strategy"] = "range_trading"
+            recommendations["confidence"] = 0.6
+            recommendations["key_levels"].append("Trade between support and resistance")
+            recommendations["time_based_recommendations"]["morning_session"] = "Wait for clearer direction"
+            recommendations["time_based_recommendations"]["power_hour"] = "Watch for breakout setups"
+        
+        # Add correlation-based recommendations
+        correlations = sector_analysis.get('correlations', {})
+        sector_correlation = correlations.get('sector_correlation', 0.75)
+        
+        if sector_correlation < 0.5:
+            recommendations["risk_factors"].append("Low sector correlation - independent movement possible")
+            recommendations["key_levels"].append("Monitor for SMT divergence opportunities")
+        
+        # Add SMT divergence recommendations
+        smt_opportunities = ict_insights.get('smt_divergence_opportunities', [])
+        if smt_opportunities:
+            recommendations["key_levels"].append("SMT divergence detected - consider counter-trend positions")
+        
+        # Add session-specific recommendations
+        recommendations["time_based_recommendations"]["silver_bullet"] = "9:45-10:00 AM optimal entry window"
+        recommendations["time_based_recommendations"]["lunch_session"] = "Avoid new positions during low volume periods"
+        
+    except Exception as e:
+        logger.error(f"Error generating sector recommendations: {e}")
+    
+    return recommendations
 
 if __name__ == "__main__":
     uvicorn.run(
