@@ -14,6 +14,8 @@ from config.settings import settings
 from app.database import get_db, create_tables
 from app.data.data_processor import data_processor
 from app.ict_engine.core_concepts import market_structure_analyzer
+from app.ict_engine.time_price import time_price_analyzer
+from app.ict_engine.risk_management import risk_management_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -263,6 +265,108 @@ async def get_ict_analysis(
             
             if not requested_concepts or 20 in requested_concepts:
                 analysis_results['concept_20_liquidity_voids'] = market_structure_analyzer.concept_20_liquidity_voids_inefficiencies(stock_data)
+        
+        # Time & Price concepts (21-30)
+        if not requested_concepts or any(21 <= c <= 30 for c in requested_concepts):
+            if not requested_concepts or 21 in requested_concepts:
+                analysis_results['concept_21_killzones'] = time_price_analyzer.concept_21_stock_killzones(stock_data)
+            if not requested_concepts or 22 in requested_concepts:
+                analysis_results['concept_22_session_opens'] = time_price_analyzer.concept_22_stock_session_opens(stock_data)
+            if not requested_concepts or 23 in requested_concepts:
+                analysis_results['concept_23_fibonacci'] = time_price_analyzer.concept_23_fibonacci_ratios(stock_data)
+            if not requested_concepts or 24 in requested_concepts:
+                analysis_results['concept_24_daily_weekly_ranges'] = time_price_analyzer.concept_24_daily_weekly_range_expectations(stock_data)
+            if not requested_concepts or 25 in requested_concepts:
+                analysis_results['concept_25_liquidity_raids'] = time_price_analyzer.concept_25_session_liquidity_raids(stock_data)
+            if not requested_concepts or 26 in requested_concepts:
+                analysis_results['concept_26_weekly_profiles'] = time_price_analyzer.concept_26_weekly_profiles(stock_data)
+            if not requested_concepts or 27 in requested_concepts:
+                analysis_results['concept_27_daily_bias'] = time_price_analyzer.concept_27_daily_bias(stock_data)
+            if not requested_concepts or 28 in requested_concepts:
+                analysis_results['concept_28_weekly_bias'] = time_price_analyzer.concept_28_weekly_bias(stock_data)
+            if not requested_concepts or 29 in requested_concepts:
+                analysis_results['concept_29_monthly_bias'] = time_price_analyzer.concept_29_monthly_bias(stock_data)
+            if not requested_concepts or 30 in requested_concepts:
+                analysis_results['concept_30_time_of_day_highs_lows'] = time_price_analyzer.concept_30_time_of_day_highs_lows(stock_data)
+        
+        # Risk Management concepts (31-39)
+        if not requested_concepts or any(31 <= c <= 39 for c in requested_concepts):
+            # Example data for risk management concepts (in production, this would come from database)
+            example_trades = [
+                {
+                    'trade_id': f'trade_{symbol}_1',
+                    'timestamp': '2024-01-15 10:30:00',
+                    'symbol': symbol,
+                    'direction': 'LONG',
+                    'entry_price': stock_data['close'].iloc[-10] if len(stock_data) > 10 else stock_data['close'].iloc[0],
+                    'stop_loss': stock_data['close'].iloc[-10] * 0.98 if len(stock_data) > 10 else stock_data['close'].iloc[0] * 0.98,
+                    'take_profit': stock_data['close'].iloc[-10] * 1.04 if len(stock_data) > 10 else stock_data['close'].iloc[0] * 1.04,
+                    'position_size': 100,
+                    'risk_amount': stock_data['close'].iloc[-10] * 2 if len(stock_data) > 10 else stock_data['close'].iloc[0] * 2,
+                    'setup_type': 'A+',
+                    'ict_concepts': ['Order Block', 'Fair Value Gap'],
+                    'confluence_score': 0.85,
+                    'outcome': 'WIN',
+                    'pnl': 400,
+                    'pnl_percentage': 2.67
+                }
+            ]
+            
+            active_trades = [
+                {
+                    'trade_id': f'active_{symbol}_1',
+                    'entry_price': stock_data['close'].iloc[-5] if len(stock_data) > 5 else stock_data['close'].iloc[0],
+                    'stop_loss': stock_data['close'].iloc[-5] * 0.98 if len(stock_data) > 5 else stock_data['close'].iloc[0] * 0.98,
+                    'direction': 'LONG'
+                }
+            ]
+            
+            trade_setups = [
+                {
+                    'entry_price': stock_data['close'].iloc[-1],
+                    'stop_loss': stock_data['close'].iloc[-1] * 0.99,
+                    'take_profit': stock_data['close'].iloc[-1] * 1.03,
+                    'direction': 'LONG',
+                    'win_probability': 0.65,
+                    'confluence_score': 0.75,
+                    'supporting_concepts': ['Order Block', 'Trend Alignment']
+                }
+            ]
+            
+            trading_history = [
+                {'timestamp': '2024-01-10', 'pnl': 150},
+                {'timestamp': '2024-01-11', 'pnl': -75},
+                {'timestamp': '2024-01-12', 'pnl': 200},
+                {'timestamp': '2024-01-13', 'pnl': -50},
+                {'timestamp': '2024-01-14', 'pnl': 100}
+            ]
+            
+            if not requested_concepts or 31 in requested_concepts:
+                analysis_results['concept_31_trade_journaling'] = risk_management_engine.concept_31_trade_journaling_backtesting(stock_data, example_trades)
+            
+            if not requested_concepts or 32 in requested_concepts:
+                analysis_results['concept_32_entry_models'] = risk_management_engine.concept_32_entry_models_fvg_ob_breaker(stock_data)
+            
+            if not requested_concepts or 33 in requested_concepts:
+                analysis_results['concept_33_exit_models'] = risk_management_engine.concept_33_exit_models_partial_full_scaling(stock_data, active_trades)
+            
+            if not requested_concepts or 34 in requested_concepts:
+                analysis_results['concept_34_risk_reward_optimization'] = risk_management_engine.concept_34_risk_to_reward_optimization(stock_data, trade_setups)
+            
+            if not requested_concepts or 35 in requested_concepts:
+                analysis_results['concept_35_position_sizing'] = risk_management_engine.concept_35_position_sizing_algorithms(50000, trade_setups)
+            
+            if not requested_concepts or 36 in requested_concepts:
+                analysis_results['concept_36_drawdown_control'] = risk_management_engine.concept_36_drawdown_control(trading_history, 50000)
+            
+            if not requested_concepts or 37 in requested_concepts:
+                analysis_results['concept_37_compounding_models'] = risk_management_engine.concept_37_compounding_models(10000, 3.0, 5)
+            
+            if not requested_concepts or 38 in requested_concepts:
+                analysis_results['concept_38_daily_loss_limits'] = risk_management_engine.concept_38_daily_loss_limits(trading_history, 50000)
+            
+            if not requested_concepts or 39 in requested_concepts:
+                analysis_results['concept_39_probability_profiles'] = risk_management_engine.concept_39_probability_profiles_abc_setups(trade_setups)
         
         return {
             "symbol": symbol,
