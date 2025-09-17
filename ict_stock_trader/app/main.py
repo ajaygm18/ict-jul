@@ -3,11 +3,14 @@ FastAPI Main Application for ICT Stock Trader
 """
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import uvicorn
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import logging
+import numpy as np
+import pandas as pd
 
 # Import configurations and dependencies
 from config.settings import settings
@@ -19,6 +22,7 @@ from app.ict_engine.risk_management import risk_management_engine
 from app.ict_engine.advanced_concepts import advanced_concepts_analyzer
 from app.ict_engine.strategies import ict_strategies_engine
 from app.system_monitor import system_monitor, db_optimizer, get_health_status
+from app.ai.ai_integration import ai_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,7 +52,10 @@ async def startup_event():
     """Initialize database and background tasks"""
     try:
         create_tables()
+        # Initialize AI components
+        await ai_engine.initialize()
         logger.info("Database tables created successfully")
+        logger.info("AI/ML components initialized")
         logger.info(f"ICT Stock Trader API started on {settings.API_V1_STR}")
     except Exception as e:
         logger.error(f"Startup error: {e}")
@@ -162,7 +169,7 @@ async def get_stock_data(
         if 'error' in data:
             raise HTTPException(status_code=404, detail=data['error'])
         
-        return {
+        response_data = {
             "symbol": symbol,
             "timeframe": timeframe,
             "data": data['data'].to_dict('records') if not data['data'].empty else [],
@@ -171,6 +178,9 @@ async def get_stock_data(
             "last_update": data['last_update'],
             "data_points": data['data_points']
         }
+        
+        # Apply proper JSON serialization
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error fetching stock data for {symbol}: {e}")
@@ -205,6 +215,69 @@ async def get_multiple_stocks_data(
     except Exception as e:
         logger.error(f"Error fetching multiple stocks data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Helper function to convert numpy types to Python types for JSON serialization
+def convert_numpy_types(obj):
+    """Convert numpy types to Python types for JSON serialization"""
+    import dataclasses
+    from enum import Enum
+    
+    if isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_types(item) for item in obj)
+    elif isinstance(obj, pd.DataFrame):
+        # Convert DataFrame to dict with proper handling of complex types
+        try:
+            # First convert the DataFrame to have JSON-serializable data
+            df_copy = obj.copy()
+            for col in df_copy.columns:
+                if df_copy[col].dtype == 'datetime64[ns]' or df_copy[col].dtype.name.startswith('datetime'):
+                    df_copy[col] = df_copy[col].astype(str)
+                elif df_copy[col].dtype == 'object':
+                    # Handle object columns that might contain timestamps or other complex types
+                    df_copy[col] = df_copy[col].astype(str)
+            
+            result = df_copy.to_dict('records')
+            return convert_numpy_types(result)
+        except Exception as e:
+            # Fallback to simple summary if conversion fails
+            return {"dataframe_summary": f"DataFrame with {len(obj)} rows and {len(obj.columns)} columns", "error": str(e)}
+    elif isinstance(obj, pd.Series):
+        # Convert Series to list
+        try:
+            return obj.tolist()
+        except:
+            return {"series_info": f"Series with length {len(obj)}"}
+    elif dataclasses.is_dataclass(obj):
+        # Convert dataclass to dict
+        return convert_numpy_types(dataclasses.asdict(obj))
+    elif isinstance(obj, Enum):
+        # Convert enum to its value
+        return obj.value
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, (np.floating, float)):
+        if np.isnan(obj) or np.isinf(obj):
+            return None  # Convert NaN and infinity to null
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        # Handle arrays by converting to list and processing each element
+        return [convert_numpy_types(item) for item in obj.tolist()]
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif hasattr(obj, 'isoformat') and callable(obj.isoformat):
+        return obj.isoformat()
+    elif hasattr(obj, 'item') and callable(obj.item):  # Handle numpy scalars
+        return convert_numpy_types(obj.item())
+    else:
+        return obj
 
 # ICT Analysis Endpoints
 @app.get(f"{settings.API_V1_STR}/ict/analysis/{{symbol}}")
@@ -537,7 +610,8 @@ async def get_ict_analysis(
             if not requested_concepts or 65 in requested_concepts:
                 analysis_results['concept_65_optimal_trade_entry'] = ict_strategies_engine.concept_65_optimal_trade_entry_strategy(stock_data)
         
-        return {
+        # Convert numpy types for JSON serialization
+        response_data = {
             "symbol": symbol,
             "timeframe": timeframe,
             "analysis_timestamp": datetime.now(),
@@ -545,6 +619,10 @@ async def get_ict_analysis(
             "ict_analysis": analysis_results,
             "summary": _generate_analysis_summary(analysis_results)
         }
+        
+        # Convert numpy types and return as JSONResponse
+        converted_data = convert_numpy_types(response_data)
+        return JSONResponse(content=converted_data)
         
     except HTTPException:
         raise
@@ -572,7 +650,8 @@ async def get_market_overview():
         # Calculate market sentiment
         market_sentiment = _calculate_market_sentiment(market_data)
         
-        return {
+        # Convert and return response
+        response_data = {
             "timestamp": datetime.now(),
             "market_indices": market_data.get('stocks', {}),
             "economic_indicators": market_data.get('economic_indicators', {}),
@@ -580,6 +659,8 @@ async def get_market_overview():
             "market_sentiment": market_sentiment,
             "news": market_data.get('news', [])[:5]  # Top 5 news items
         }
+        
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error in market overview: {e}")
@@ -630,11 +711,14 @@ async def get_default_watchlist():
                     }
                 }
         
-        return {
+        # Convert and return response
+        response_data = {
             "timestamp": datetime.now(),
             "watchlist": enhanced_watchlist,
             "market_context": watchlist_data.get('market_context', {})
         }
+        
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except Exception as e:
         logger.error(f"Error in watchlist analysis: {e}")
@@ -697,7 +781,8 @@ async def get_sector_correlation_analysis(
             smt_analysis = ict_strategies_engine.concept_59_smt_divergence_strategy(correlated_data)
             ict_sector_insights['smt_divergence_opportunities'] = smt_analysis
         
-        return {
+        # Convert and return response
+        response_data = {
             "symbol": symbol,
             "sector_stocks_analyzed": sector_stock_list,
             "analysis_timestamp": datetime.now(),
@@ -707,6 +792,8 @@ async def get_sector_correlation_analysis(
                 sector_analysis, ict_sector_insights
             )
         }
+        
+        return JSONResponse(content=convert_numpy_types(response_data))
         
     except HTTPException:
         raise
@@ -876,6 +963,196 @@ def _generate_sector_trading_recommendations(sector_analysis: Dict, ict_insights
         logger.error(f"Error generating sector recommendations: {e}")
     
     return recommendations
+
+# AI/ML Endpoints
+@app.get(f"{settings.API_V1_STR}/ai/analysis/{{symbol}}")
+async def get_ai_analysis(
+    symbol: str,
+    timeframe: str = "5m",
+    include_features: bool = False
+):
+    """
+    Get AI-powered pattern analysis for a stock with 200+ technical indicators
+    """
+    try:
+        symbol = symbol.upper()
+        
+        # Get stock data
+        stock_data_result = await data_processor.process_real_time_data(symbol, timeframe)
+        
+        if 'error' in stock_data_result:
+            raise HTTPException(status_code=404, detail=stock_data_result['error'])
+        
+        stock_data = stock_data_result['data']
+        
+        if stock_data.empty:
+            raise HTTPException(status_code=404, detail="No data available for AI analysis")
+        
+        # Run AI analysis
+        ai_analysis = await ai_engine.analyze_symbol_with_ai(symbol, stock_data, timeframe)
+        
+        # Include feature data if requested
+        if include_features and ai_analysis['status'] == 'success':
+            feature_set = ai_engine.create_features_for_symbol(symbol, stock_data, timeframe)
+            ai_analysis['features'] = {
+                'feature_names': feature_set.feature_names,
+                'feature_count': len(feature_set.feature_names),
+                'latest_values': feature_set.features.iloc[-1].to_dict() if not feature_set.features.empty else {}
+            }
+        
+        return ai_analysis
+        
+    except Exception as e:
+        logger.error(f"Error in AI analysis for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post(f"{settings.API_V1_STR}/ai/train")
+async def train_ai_models(
+    background_tasks: BackgroundTasks,
+    symbols: str = "AAPL,GOOGL,MSFT,TSLA,AMZN",  # Default training symbols
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    """
+    Train AI models on historical stock data (Background task)
+    """
+    try:
+        symbol_list = [s.strip().upper() for s in symbols.split(',')]
+        
+        if len(symbol_list) > 20:
+            raise HTTPException(status_code=400, detail="Maximum 20 symbols allowed for training")
+        
+        # Add training task to background
+        background_tasks.add_task(
+            ai_engine.train_models_for_symbols,
+            symbol_list,
+            start_date,
+            end_date
+        )
+        
+        # AI/ML Endpoints - Convert all remaining endpoints to use JSONResponse
+        
+        # Fix AI training endpoint
+        response_data = {
+            "message": "AI model training started",
+            "symbols": symbol_list,
+            "start_date": start_date,
+            "end_date": end_date,
+            "status": "training_initiated",
+            "timestamp": datetime.now().isoformat()
+        }
+        return JSONResponse(content=convert_numpy_types(response_data))
+        
+    except Exception as e:
+        logger.error(f"Error initiating AI training: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get(f"{settings.API_V1_STR}/ai/features/{{symbol}}")
+async def get_technical_indicators(
+    symbol: str,
+    timeframe: str = "5m",
+    format: str = "summary"  # "summary" or "detailed"
+):
+    """
+    Get 200+ technical indicators for a stock
+    """
+    try:
+        symbol = symbol.upper()
+        
+        # Get stock data
+        stock_data_result = await data_processor.process_real_time_data(symbol, timeframe)
+        
+        if 'error' in stock_data_result:
+            raise HTTPException(status_code=404, detail=stock_data_result['error'])
+        
+        stock_data = stock_data_result['data']
+        
+        if stock_data.empty:
+            raise HTTPException(status_code=404, detail="No data available for feature extraction")
+        
+        # Create comprehensive features
+        feature_set = ai_engine.create_features_for_symbol(symbol, stock_data, timeframe)
+        
+        if format == "detailed":
+            return {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "feature_count": len(feature_set.feature_names),
+                "feature_names": feature_set.feature_names,
+                "latest_values": feature_set.features.iloc[-1].to_dict() if not feature_set.features.empty else {},
+                "historical_data": feature_set.features.tail(50).to_dict('records') if not feature_set.features.empty else [],
+                "creation_timestamp": feature_set.creation_timestamp.isoformat()
+            }
+        else:
+            # Summary format
+            if not feature_set.features.empty:
+                latest_features = feature_set.features.iloc[-1]
+                feature_summary = {
+                    'price_indicators': {k: v for k, v in latest_features.items() if 'SMA' in k or 'EMA' in k or 'BB' in k}[:10],
+                    'volume_indicators': {k: v for k, v in latest_features.items() if 'Volume' in k or 'OBV' in k or 'VWAP' in k}[:5],
+                    'momentum_indicators': {k: v for k, v in latest_features.items() if 'RSI' in k or 'MACD' in k or 'Stoch' in k}[:5],
+                    'ict_indicators': {k: v for k, v in latest_features.items() if 'FVG' in k or 'OB' in k or 'Premium' in k}[:5]
+                }
+            else:
+                feature_summary = {}
+            
+            return {
+                "symbol": symbol,
+                "timeframe": timeframe,
+                "feature_count": len(feature_set.feature_names),
+                "feature_summary": feature_summary,
+                "creation_timestamp": feature_set.creation_timestamp.isoformat()
+            }
+        
+    except Exception as e:
+        logger.error(f"Error extracting features for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get(f"{settings.API_V1_STR}/ai/feature-importance")
+async def get_feature_importance():
+    """
+    Get feature importance from trained AI models
+    """
+    try:
+        importance_data = ai_engine.get_feature_importance()
+        return importance_data
+        
+    except Exception as e:
+        logger.error(f"Error getting feature importance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get(f"{settings.API_V1_STR}/ai/performance")
+async def get_ai_performance():
+    """
+    Get AI engine performance statistics
+    """
+    try:
+        performance_stats = ai_engine.get_ai_performance_stats()
+        return {
+            "status": "success",
+            "timestamp": datetime.now().isoformat(),
+            "performance": performance_stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting AI performance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post(f"{settings.API_V1_STR}/ai/cache/clear")
+async def clear_ai_cache():
+    """
+    Clear AI feature and pattern caches
+    """
+    try:
+        ai_engine.clear_cache()
+        return {
+            "message": "AI caches cleared successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error clearing AI cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(

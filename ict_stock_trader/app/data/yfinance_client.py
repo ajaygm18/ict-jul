@@ -63,6 +63,8 @@ class YFinanceClient:
             data.columns = [col.lower().replace(' ', '_') for col in data.columns]
             if 'datetime' in data.columns:
                 data.rename(columns={'datetime': 'timestamp'}, inplace=True)
+            elif 'date' in data.columns:
+                data.rename(columns={'date': 'timestamp'}, inplace=True)
             
             # Calculate bid/ask spread approximation
             data['bid_price'] = data['close'] - (data['high'] - data['low']) * 0.1
