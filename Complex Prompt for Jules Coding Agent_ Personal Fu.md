@@ -1,6 +1,6 @@
 <img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
 
-# Complex Prompt for Jules Coding Agent: Personal Full-Stack ICT Stock Trading AI Agent
+# Complex Prompt for COPILOT Coding Agent: Personal Full-Stack ICT Stock Trading AI Agent
 
 ## 🎯 **PRIMARY OBJECTIVE**
 
@@ -1032,7 +1032,7 @@ class TradingSignals(Base):
 
 ***
 
-## 🚀 **EXECUTION CHECKLIST FOR JULES**
+## 🚀 **EXECUTION CHECKLIST FOR COPILOT**
 
 ### **Day 1: Project Initialization**
 
@@ -1165,5 +1165,5 @@ class TradingSignals(Base):
 5. **Strategy Backtesting**: Historical performance analysis for all strategies
 6. **Personal Use Optimization**: Simple, efficient, no unnecessary complexity
 
-**Jules, begin implementation immediately. Focus on implementing ALL 65 ICT concepts systematically. This is a personal project, so keep it simple but complete. Use only real stock market data via yfinance and never any synthetic data. Build this as a comprehensive ICT analysis system specifically for stock trading.**
+**COPILOT, begin implementation immediately. Focus on implementing ALL 65 ICT concepts systematically. This is a personal project, so keep it simple but complete. Use only real stock market data via yfinance and never any synthetic data. Build this as a comprehensive ICT analysis system specifically for stock trading.**
 
