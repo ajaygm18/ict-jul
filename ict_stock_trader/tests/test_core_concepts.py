@@ -84,3 +84,24 @@ def test_market_structure_insufficient_data(market_analyzer):
 
     assert result['market_structure'] == 'Indeterminate'
     assert result['structure_points'] == []
+
+def test_liquidity_detection(market_analyzer):
+    """
+    Tests the identification of buy-side and sell-side liquidity pools.
+    """
+    data = create_test_data([
+        (10, 8),
+        (12, 10), # Swing High
+        (11, 9),  # Swing Low
+        (14, 12), # Swing High
+        (13, 11), # Swing Low
+        (16, 14), # Swing High
+        (15, 13)
+    ])
+
+    result = market_analyzer.concept_2_liquidity_buyside_sellside(data, order=1)
+
+    # Expected swing highs at 12, 14, 16
+    assert result['buy_side_liquidity'] == [12.0, 14.0, 16.0]
+    # Expected swing lows at 9, 11
+    assert result['sell_side_liquidity'] == [9.0, 11.0]
